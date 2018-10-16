@@ -107,9 +107,10 @@ PARAMS = P.getParameters(
 
 PARAMS["pipelinedir"] = os.path.dirname(__file__)
 # ---------------------------------------------------
+@active_if(PARAMS['mode'] == 'normal')
 @follows(mkdir("*.remote",suffix(".remote"),".dir"))
 @transform("*.remote", regex(r"(.+).remote"),r"\1.dir/\1.fastq.1.gz")
-def downloadsras(infile, outfile):
+def downloadsrasnormal(infile, outfile):
     #outdir="./"+P.snip(infile, ".remote")
     outfile1 = outfile
     outfile2 = P.snip(outfile, ".1.gz")+".2.gz"
@@ -125,9 +126,26 @@ def downloadsras(infile, outfile):
                  mv %(sra)s_2.fastq.gz %(outfile2)s'''
     job_memory="6G"
     P.run()
+
+@active_if(PARAMS['mode'] == 'alt')
+@follows(mkdir("*.remote",suffix(".remote"),".dir"))
+@transform("*.remote", regex(r"(.+).remote"),r"\1.dir/\1.fastq.1.gz")
+def downloadsrasalt(infile, outfile):
+    #outdir="./"+P.snip(infile, ".remote")
+    outfile1 = outfile
+    sra = open(infile).readlines()[0].split()[1]
+    statement='''fastq-dump 
+                 --split-files 
+                 --gzip 
+                 -Q 33  
+                 %(sra)s;
+                 checkpoint;
+                 mv %(sra)s_1.fastq.gz %(outfile1)s;'''
+    job_memory="6G"
+    P.run()
 # ---------------------------------------------------
 # Generic pipeline tasks
-@follows(downloadsras)
+@follows(downloadsrasnormal,downloadsrasalt)
 def full():
     pass
 
